@@ -1,0 +1,10 @@
+{
+  "BackendRootUrl": "https://localhost:7039",
+  "AuthMode": "oauth2",
+  "AppName": "Musaed",
+  "configName": "appsettings",
+  "assetName": "serversettings",
+  "PackageDownloadRootFolder": "%LOCALAPPDATA%/Musaed",
+  "ClientId": "cicd-pipeline",
+  "ClientSecret": "super-secret-client-key"
+}

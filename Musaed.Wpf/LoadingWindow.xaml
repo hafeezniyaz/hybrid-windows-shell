@@ -1,0 +1,42 @@
+﻿<Window x:Class="Musaed.Wpf.LoadingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Musaed.Wpf"
+        mc:Ignorable="d"
+        Title="Musaed" Height="400" Width="600" 
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="ModernProgressBar" TargetType="ProgressBar">
+            <Setter Property="Background" Value="#404040"/>
+            <Setter Property="Foreground" Value="#007ACC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="4"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Border x:Name="MainContent" Background="#F0F0F0" CornerRadius="8"
+                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
+            
+            <wv2:WebView2 Name="WebView"
+                          Source="{Binding WebViewSource}" />
+            
+        </Border>
+
+        <Border x:Name="LoadingScreen" Background="#FF2D2D30" CornerRadius="8"
+                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="60">
+                <TextBlock Text="Musaed" FontFamily="Segoe UI Semibold" Foreground="#EAEAEA" FontSize="36" HorizontalAlignment="Center"/>
+                <ProgressBar IsIndeterminate="True" Width="200" Margin="0,20,0,10" Style="{StaticResource ModernProgressBar}"/>
+                <TextBlock Text="{Binding StatusMessage}" FontFamily="Segoe UI" Foreground="#A0A0A0" FontSize="14" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
