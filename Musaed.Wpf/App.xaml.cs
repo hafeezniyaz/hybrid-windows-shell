@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Polly.Extensions.Http;
 using Musaed.Infrastructure.Handlers;
 using System.Net.Http;
+using Serilog;
 
 namespace Musaed.Wpf
 {
@@ -27,91 +28,85 @@ namespace Musaed.Wpf
 
         public App()
         {
-            _host = Host.CreateDefaultBuilder() // 1. Create the generic host builder
-                .UseSerilogForApp()              // 2. Plug in our Serilog configuration
-                .ConfigureServices((context, services) =>
-                {
-                    // 3. Register our services with the DI container
+            _host = Host.CreateDefaultBuilder()
+    .ConfigureServices((context, services) =>
+    {
+        // Register services with the DI container
+        services.AddSingleton<IConfigService, ConfigService>();
 
-                    // We register ConfigService as the implementation for IConfigService.
-                    // AddSingleton means only one instance will be created for the entire application lifetime.
-                    services.AddSingleton<IConfigService, ConfigService>();
+        // --- Authentication ---
+        services.AddTransient<AuthenticationHandler>();
+        services.AddHttpClient<IAuthService, AuthService>((serviceProvider, client) =>
+        {
+            var configService = serviceProvider.GetRequiredService<IConfigService>();
+            client.BaseAddress = new Uri(configService.Config.BackendRootUrl);
+        });
 
-                    // --- Authentication ---
-                    // Register our custom handler. It's transient because it's part of the HTTP pipeline.
-                    services.AddTransient<AuthenticationHandler>();
+        // --- Shared HttpClient Configuration Logic ---
+        Func<IServiceProvider, HttpClientHandler> primaryHandlerFactory = sp =>
+        {
+            var configService = sp.GetRequiredService<IConfigService>();
+            var handler = new HttpClientHandler();
+            if ("windows".Equals(configService.Config.AuthMode, StringComparison.OrdinalIgnoreCase))
+            {
+                handler.UseDefaultCredentials = true;
+            }
+            return handler;
+        };
 
-                    // Register the AuthService and give it a simple, dedicated HttpClient.
-                    services.AddHttpClient<IAuthService, AuthService>((serviceProvider, client) =>
+        var retryPolicy = (IServiceProvider provider, HttpRequestMessage request) =>
+        {
+            var logger = provider.GetRequiredService<ILogger<App>>();
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                    onRetry: (outcome, timespan, retryAttempt, context) =>
                     {
-                        var configService = serviceProvider.GetRequiredService<IConfigService>();
-                        client.BaseAddress = new Uri(configService.Config.BackendRootUrl);
+                        // Use the logger to record retry attempts instead of Debug.WriteLine
+                        logger.LogWarning(
+                            "Request to {RequestUri} failed with {StatusCode}. Waiting {TimeSpan} before next retry. Attempt {RetryAttempt} of 3.",
+                            outcome.Result?.RequestMessage?.RequestUri,
+                            outcome.Result?.StatusCode,
+                            timespan,
+                            retryAttempt);
                     });
+        };
 
+        Action<IServiceProvider, HttpClient> configureClient = (sp, client) =>
+        {
+            var configService = sp.GetRequiredService<IConfigService>();
+            client.BaseAddress = new Uri(configService.Config.BackendRootUrl);
+        };
 
-                    // This configures the IHttpClientFactory and adds our BackendApiClient.
-                    // It's the modern, recommended way to use HttpClient in .NET.
-                    // --- Main API Client ---
-                    services.AddHttpClient<IBackendApiClient, BackendApiClient>((serviceProvider, client) =>
-                    {
-                        var configService = serviceProvider.GetRequiredService<IConfigService>();
-                        client.BaseAddress = new Uri(configService.Config.BackendRootUrl);
-                    })
-                    // This is the corrected, conditional configuration for the primary handler.
-                    .ConfigurePrimaryHttpMessageHandler(serviceProvider =>
-                    {
-                        // First, get the configuration service.
-                        var configService = serviceProvider.GetRequiredService<IConfigService>();
-                        var handler = new HttpClientHandler();
+        // --- Main API Client (Typed) ---
+        services.AddHttpClient<IBackendApiClient, BackendApiClient>(configureClient)
+            .ConfigurePrimaryHttpMessageHandler(primaryHandlerFactory)
+            .AddHttpMessageHandler<AuthenticationHandler>()
+            .AddPolicyHandler(retryPolicy);
 
-                        // Check the AuthMode from the configuration.
-                        if ("windows".Equals(configService.Config.AuthMode, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // ONLY apply this setting if the mode is "windows".
-                            handler.UseDefaultCredentials = true;
-                        }
+        // --- Logging API Client (Named) ---
+        // Register a named client with the same configuration for our logging sink
+        services.AddHttpClient("LoggingClient", configureClient)
+            .ConfigurePrimaryHttpMessageHandler(primaryHandlerFactory)
+            .AddHttpMessageHandler<AuthenticationHandler>()
+            .AddPolicyHandler(retryPolicy);
 
-                        // For "oauth" mode, UseDefaultCredentials remains false, which is correct.
-                        return handler;
-                    })
-                    .AddHttpMessageHandler<AuthenticationHandler>()
-                                        // This adds a Polly resilience policy.
-                                        // It will automatically retry a failed request up to 3 times with a delay.
-                                        .AddPolicyHandler((serviceProvider, request) =>
-                    {
-                        // Get the ILoggerFactory from the service provider
-                        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-                        // Create a logger with a specific category for our retry policy
-                        var logger = loggerFactory.CreateLogger($"PollyRetryPolicy.{request.Method.Method}");
+        // --- Other Services ---
+        services.AddSingleton<ICacheService, JsonCacheService>();
+        services.AddSingleton<IPackageManager, PackageManagerService>();
+        services.AddSingleton<IProcessManager, ProcessManagerService>();
+        services.AddSingleton<LoadingViewModel>();
+        services.AddTransient<LoadingWindow>();
+        services.AddTransient<BrowserWindow>();
+        services.AddSingleton<Bootstrapper>();
+    })
+    // Configure Serilog *after* services are registered, allowing it to use them
+    .UseSerilog((context, services, loggerConfiguration) =>
+    {
+        Infrastructure.Logging.SerilogSetup.Configure(services, loggerConfiguration);
+    })
+    .Build();
 
-                        // Manually define the policy that the old helper used to create for us
-                        return HttpPolicyExtensions
-                            .HandleTransientHttpError() // This handles the same 5xx, 408, etc. errors
-                            .WaitAndRetryAsync(
-                                3, // The total number of retries
-                                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff
-                                onRetry: (outcome, timespan, retryAttempt, context) => // This block now uses our real logger
-                                {
-                                    logger.LogWarning(
-                                        "Request to {RequestUri} failed with {StatusCode}. Waiting {TimeSpan} before next retry. Retry attempt {RetryAttempt}",
-                                        request.RequestUri,
-                                        outcome.Result?.StatusCode,
-                                        timespan,
-                                        retryAttempt);
-                                }
-                            );
-                    });
-
-                    services.AddSingleton<ICacheService, JsonCacheService>();
-                    services.AddSingleton<IPackageManager, PackageManagerService>();
-                    services.AddSingleton<IProcessManager, ProcessManagerService>();
-                    // Register the main window of our application
-                    services.AddSingleton<LoadingViewModel>();
-                    services.AddTransient<LoadingWindow>();
-                    services.AddTransient<BrowserWindow>();
-                    services.AddSingleton<Bootstrapper>();
-                })
-                .Build(); // 4. Build the host
         }
 
         protected override async void OnStartup(StartupEventArgs e)

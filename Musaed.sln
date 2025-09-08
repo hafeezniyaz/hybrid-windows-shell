@@ -3,13 +3,18 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35004.147
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Musaed.Wpf", "Musaed.Wpf\Musaed.Wpf.csproj", "{6AA73F7D-5337-4008-96D0-97C24E2DB86E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Musaed.Wpf", "Musaed.Wpf\Musaed.Wpf.csproj", "{6AA73F7D-5337-4008-96D0-97C24E2DB86E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Musaed.Core", "Musaed.Core\Musaed.Core.csproj", "{90C456A2-ED3F-4F18-BC92-B4F89B7EFEC8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Musaed.Core", "Musaed.Core\Musaed.Core.csproj", "{90C456A2-ED3F-4F18-BC92-B4F89B7EFEC8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Musaed.Infrastructure", "Musaed.Infrastructure\Musaed.Infrastructure.csproj", "{61EFF773-E7DB-4C29-AB84-16AA31D6220A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Musaed.Infrastructure", "Musaed.Infrastructure\Musaed.Infrastructure.csproj", "{61EFF773-E7DB-4C29-AB84-16AA31D6220A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Musaed.Server", "Musaed.Server\Musaed.Server.csproj", "{3946E390-4CE5-4B84-947E-09C018F56A29}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Musaed.Server", "Musaed.Server\Musaed.Server.csproj", "{3946E390-4CE5-4B84-947E-09C018F56A29}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{202C919D-B010-4802-B93E-58A425A2A03D}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

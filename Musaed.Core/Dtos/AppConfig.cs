@@ -19,4 +19,6 @@ public class AppConfig
     public string? ClientId { get; set; }
     public string? ClientSecret { get; set; }
     public string PackageDownloadRootFolder { get; set; } // e.g., "%LOCALAPPDATA%/Musaed"
+
+    public bool? LogToOrchestrator { get; set; } = true;
 }

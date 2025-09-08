@@ -6,5 +6,6 @@
   "assetName": "serversettings",
   "PackageDownloadRootFolder": "%LOCALAPPDATA%/Musaed",
   "ClientId": "cicd-pipeline",
-  "ClientSecret": "super-secret-client-key"
+  "ClientSecret": "super-secret-client-key",
+  "LogToOrchestrator": true
 }
